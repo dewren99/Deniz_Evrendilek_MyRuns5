@@ -20,8 +20,8 @@ class SensorListenerManager(
         sensorManager.registerListener(
             this,
             accelerometer,
-            SensorManager.SENSOR_DELAY_FASTEST,
-            SensorManager.SENSOR_DELAY_FASTEST
+            SensorManager.SENSOR_DELAY_NORMAL,
+            SensorManager.SENSOR_DELAY_NORMAL
         )
     }
 
