@@ -19,6 +19,7 @@ import com.example.deniz_evrendilek_myruns5.constants.ExerciseTypes.EXERCISE_TYP
 import com.example.deniz_evrendilek_myruns5.constants.InputTypes.INPUT_TYPE_UNKNOWN_ID
 import com.example.deniz_evrendilek_myruns5.data.model.TrackingExerciseEntry
 import com.example.deniz_evrendilek_myruns5.managers.LocationTrackingManager
+import com.example.deniz_evrendilek_myruns5.managers.SensorListenerManager
 import com.example.deniz_evrendilek_myruns5.ui.activities.MainActivity
 import com.google.android.gms.location.LocationServices
 import kotlinx.coroutines.CoroutineScope
@@ -37,6 +38,7 @@ class TrackingService : Service() {
     private var exerciseTypeId: Int = EXERCISE_TYPE_UNKNOWN_ID
     private var inputTypeId: Int = INPUT_TYPE_UNKNOWN_ID
     private lateinit var onNotificationClickIntent: PendingIntent
+    private lateinit var sensorListenerManager: SensorListenerManager
 
     override fun onBind(intent: Intent?): IBinder? {
         return null
@@ -44,8 +46,15 @@ class TrackingService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        initSensorListener()
         initLocationProvider()
         resetTrackedExerciseEntry()
+    }
+
+    private fun initSensorListener() {
+        sensorListenerManager = SensorListenerManager(this) {
+            println("SensorEvent: ${it.values.size}")
+        }
     }
 
     private fun initLocationProvider() {
@@ -75,6 +84,10 @@ class TrackingService : Service() {
     }
 
     private fun start() {
+        if (inputTypeId == 2) {
+            // start if automatic
+            sensorListenerManager.start()
+        }
         setOnClickNotificationIntent() // must be set before setupNotification
         setupNotification()
         setupLocationListener()
@@ -153,6 +166,7 @@ class TrackingService : Service() {
     }
 
     override fun onDestroy() {
+        sensorListenerManager.stop()
         super.onDestroy()
         scope.cancel()
     }
