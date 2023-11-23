@@ -1,25 +1,39 @@
 package com.example.deniz_evrendilek_myruns5.managers
 
 import android.hardware.SensorEvent
+import com.example.deniz_evrendilek_myruns5.generated.WekaClassifier
 import com.example.deniz_evrendilek_myruns5.utils.FFT
-import weka.core.Instance
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withContext
+import java.util.concurrent.ArrayBlockingQueue
 import kotlin.math.pow
 import kotlin.math.sqrt
 
 object ExerciseRecognitionManager {
     private const val ACCELEROMETER_BLOCK_CAPACITY = 64
     private const val FEATURES_LEN = ACCELEROMETER_BLOCK_CAPACITY + 1
+    private var instance = DoubleArray(FEATURES_LEN)
+    private var sensorEventBuffer = ArrayBlockingQueue<Double>(ACCELEROMETER_BLOCK_CAPACITY)
 
-    private var instance = Instance(FEATURES_LEN)
-
-    private fun clearInstance() {
-        instance = Instance(FEATURES_LEN)
+    private fun addToBuffer(double: Double) {
+        try {
+            sensorEventBuffer.add(double)
+        } catch (e: Exception) {
+            val newBuffer = ArrayBlockingQueue<Double>(sensorEventBuffer.size * 2)
+            sensorEventBuffer.drainTo(newBuffer)
+            sensorEventBuffer = newBuffer
+            sensorEventBuffer.add(double)
+        }
     }
 
-    private fun onClassify(classifier: (Instance) -> Double): Double {
-        val res = classifier(instance)
-        clearInstance()
-        return res
+    fun addSensorEventToBuffer(event: SensorEvent) {
+        val magnitude = getMagnitude(event)
+        addToBuffer(magnitude)
+    }
+
+    private fun clearInstance() {
+        instance = DoubleArray(FEATURES_LEN)
     }
 
     private fun getMagnitude(event: SensorEvent): Double {
@@ -30,31 +44,40 @@ object ExerciseRecognitionManager {
         return sqrt(temp)
     }
 
-    private fun generateFeatureVector(re: List<Double>) {
+    /**
+     * Taken from https://canvas.sfu.ca/courses/80625/pages/service-implementation
+     */
+    private fun generateFeatureVector(re: DoubleArray) {
+        clearInstance()
         val max = re.maxOrNull() ?: 0.0
         val im = DoubleArray(ACCELEROMETER_BLOCK_CAPACITY)
-        println("List sizes: ${im.size}, ${re.size}")
-        FFT(ACCELEROMETER_BLOCK_CAPACITY).fft(re.toDoubleArray(), im)
-        println("real AVG: ${re.average()}")
-        println("imaginary non-zero: ${im.filter { it != 0.0 }.size}")
+        FFT(ACCELEROMETER_BLOCK_CAPACITY).fft(re, im)
         println()
         for (i in re.indices) {
             val mag = Math.sqrt(re[i] * re[i] + im[i] * im[i])
             // Adding the computed FFT coefficient to the feature vector
-            instance.setValue(i, mag)
+            instance[i] = mag
             // Clear the field
-            im[i] = .0;
+            im[i] = .0
         }
-        instance.setValue(ACCELEROMETER_BLOCK_CAPACITY, max);
+        instance[ACCELEROMETER_BLOCK_CAPACITY] = max
     }
 
-    fun process(events: List<SensorEvent>, classifier: (Instance) -> Double): Double {
-        val magnitudes: List<Double> = events.map {
-            getMagnitude(it)
+    suspend fun process() {
+        return withContext(Dispatchers.IO) {
+            val events = DoubleArray(ACCELEROMETER_BLOCK_CAPACITY)
+            var eventIndex = 0
+            while (isActive) {
+                events[eventIndex++] = sensorEventBuffer.take()
+                if (events.size != ACCELEROMETER_BLOCK_CAPACITY) {
+                    continue
+                }
+                eventIndex = 0
+                generateFeatureVector(events)
+                val res = WekaClassifier.classify(instance.toTypedArray())
+                println("Classified process: $res")
+            }
         }
-        generateFeatureVector(magnitudes)
-        return onClassify(classifier)
     }
-
 
 }

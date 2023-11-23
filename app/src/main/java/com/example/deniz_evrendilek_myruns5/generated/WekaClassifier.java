@@ -4,7 +4,7 @@ package com.example.deniz_evrendilek_myruns5.generated;
 // This code is public domain and comes with no warranty.
 //
 // Timestamp: Wed Nov 22 20:23:24 PST 2023
-class WekaClassifier {
+public class WekaClassifier {
 
     public static double classify(Object[] i)
             throws Exception {

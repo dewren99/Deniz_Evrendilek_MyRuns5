@@ -32,7 +32,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
-import weka.core.Instance
+import kotlinx.coroutines.launch
 
 class TrackingService : Service() {
     private var isFirstRun = true
@@ -45,7 +45,6 @@ class TrackingService : Service() {
 
     // initialized based on exercise input type
     private var sensorListenerManager: SensorListenerManager? = null
-    private val sensorData = mutableListOf<SensorEvent>()
 
     override fun onBind(intent: Intent?): IBinder? {
         return null
@@ -62,6 +61,9 @@ class TrackingService : Service() {
             // start only if automatic
             return
         }
+        scope.launch {
+            ExerciseRecognitionManager.process()
+        }
         sensorListenerManager = SensorListenerManager(this, ::onSensorChanged)
         sensorListenerManager?.start()
     }
@@ -77,15 +79,7 @@ class TrackingService : Service() {
                 }
             }"
         )
-        sensorData.add(event)
-        if (sensorData.size != 64) {
-            return
-        }
-        val classifier = { instance: Instance ->
-            sensorDataClassificationManager!!.classify(instance)
-        }
-        ExerciseRecognitionManager.process(sensorData, classifier)
-        sensorData.clear()
+        ExerciseRecognitionManager.addSensorEventToBuffer(event)
     }
 
     private fun initLocationProvider() {

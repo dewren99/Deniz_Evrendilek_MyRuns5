@@ -34,7 +34,7 @@ class SensorListenerManager(
     }
 
     override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) {
-        // TODO
+        // Nothing
     }
 
 
