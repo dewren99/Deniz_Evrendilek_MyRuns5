@@ -22,7 +22,6 @@ import com.example.deniz_evrendilek_myruns5.constants.InputTypes.INPUT_TYPE_UNKN
 import com.example.deniz_evrendilek_myruns5.data.model.TrackingExerciseEntry
 import com.example.deniz_evrendilek_myruns5.managers.ExerciseRecognitionManager
 import com.example.deniz_evrendilek_myruns5.managers.LocationTrackingManager
-import com.example.deniz_evrendilek_myruns5.managers.SensorDataClassificationManager
 import com.example.deniz_evrendilek_myruns5.managers.SensorListenerManager
 import com.example.deniz_evrendilek_myruns5.ui.activities.MainActivity
 import com.google.android.gms.location.LocationServices
@@ -46,7 +45,6 @@ class TrackingService : Service() {
 
     // initialized based on exercise input type
     private var sensorListenerManager: SensorListenerManager? = null
-    private var sensorDataClassificationManager: SensorDataClassificationManager? = null
     private val sensorData = mutableListOf<SensorEvent>()
 
     override fun onBind(intent: Intent?): IBinder? {
@@ -64,7 +62,6 @@ class TrackingService : Service() {
             // start only if automatic
             return
         }
-        sensorDataClassificationManager = SensorDataClassificationManager(this)
         sensorListenerManager = SensorListenerManager(this, ::onSensorChanged)
         sensorListenerManager?.start()
     }
