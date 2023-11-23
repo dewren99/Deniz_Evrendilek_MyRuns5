@@ -2,11 +2,13 @@ package com.example.deniz_evrendilek_myruns5.managers
 
 import android.content.Context
 import weka.classifiers.bayes.NaiveBayes
+import weka.core.Instance
 import weka.core.Instances
 import java.io.BufferedReader
 
 class SensorDataClassificationManager(context: Context) {
     private val classifier = NaiveBayes()
+    private lateinit var instances: Instances
 
     init {
         readFeaturesFile(context, ::setupClassifier)
@@ -20,12 +22,15 @@ class SensorDataClassificationManager(context: Context) {
     }
 
     private fun setupClassifier(bufferedReader: BufferedReader) {
-        val instances = Instances(bufferedReader)
+        instances = Instances(bufferedReader)
         instances.setClassIndex(instances.numAttributes() - 1)
         classifier.buildClassifier(instances)
     }
 
-    fun classify() {
-        // TODO
+    fun classify(instance: Instance): Double {
+        instance.setDataset(instances)
+        val i = classifier.classifyInstance(instance)
+        println("classify $i")
+        return i
     }
 }

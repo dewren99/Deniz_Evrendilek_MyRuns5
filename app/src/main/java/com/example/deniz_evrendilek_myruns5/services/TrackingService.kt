@@ -9,6 +9,8 @@ import android.app.PendingIntent.FLAG_UPDATE_CURRENT
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.hardware.Sensor
+import android.hardware.SensorEvent
 import android.location.Location
 import android.os.Build
 import android.os.IBinder
@@ -18,6 +20,7 @@ import com.example.deniz_evrendilek_myruns5.R
 import com.example.deniz_evrendilek_myruns5.constants.ExerciseTypes.EXERCISE_TYPE_UNKNOWN_ID
 import com.example.deniz_evrendilek_myruns5.constants.InputTypes.INPUT_TYPE_UNKNOWN_ID
 import com.example.deniz_evrendilek_myruns5.data.model.TrackingExerciseEntry
+import com.example.deniz_evrendilek_myruns5.managers.ExerciseRecognitionManager
 import com.example.deniz_evrendilek_myruns5.managers.LocationTrackingManager
 import com.example.deniz_evrendilek_myruns5.managers.SensorDataClassificationManager
 import com.example.deniz_evrendilek_myruns5.managers.SensorListenerManager
@@ -30,6 +33,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import weka.core.Instance
 
 class TrackingService : Service() {
     private var isFirstRun = true
@@ -43,6 +47,7 @@ class TrackingService : Service() {
     // initialized based on exercise input type
     private var sensorListenerManager: SensorListenerManager? = null
     private var sensorDataClassificationManager: SensorDataClassificationManager? = null
+    private val sensorData = mutableListOf<SensorEvent>()
 
     override fun onBind(intent: Intent?): IBinder? {
         return null
@@ -60,10 +65,30 @@ class TrackingService : Service() {
             return
         }
         sensorDataClassificationManager = SensorDataClassificationManager(this)
-        sensorListenerManager = SensorListenerManager(this) {
-            println("SensorEvent: ${it.values.size}")
-        }
+        sensorListenerManager = SensorListenerManager(this, ::onSensorChanged)
         sensorListenerManager?.start()
+    }
+
+    private fun onSensorChanged(event: SensorEvent) {
+        if (event.sensor.type != Sensor.TYPE_ACCELEROMETER) {
+            return
+        }
+        println(
+            "SensorEvent: ${
+                event.values.forEach {
+                    print("($it)")
+                }
+            }"
+        )
+        sensorData.add(event)
+        if (sensorData.size != 64) {
+            return
+        }
+        val classifier = { instance: Instance ->
+            sensorDataClassificationManager!!.classify(instance)
+        }
+        ExerciseRecognitionManager.process(sensorData, classifier)
+        sensorData.clear()
     }
 
     private fun initLocationProvider() {
