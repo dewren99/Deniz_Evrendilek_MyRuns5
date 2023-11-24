@@ -72,13 +72,6 @@ class TrackingService : Service() {
         if (event.sensor.type != Sensor.TYPE_ACCELEROMETER) {
             return
         }
-        println(
-            "SensorEvent: ${
-                event.values.forEach {
-                    print("($it)")
-                }
-            }"
-        )
         ExerciseRecognitionManager.addSensorEventToBuffer(event)
     }
 

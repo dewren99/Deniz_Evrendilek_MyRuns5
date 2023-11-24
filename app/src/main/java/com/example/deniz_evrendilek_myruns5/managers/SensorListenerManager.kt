@@ -8,7 +8,7 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 
 class SensorListenerManager(
-    private val context: Context,
+    context: Context,
     private val handleSensorChanged: (SensorEvent) -> Unit
 ) : SensorEventListener {
 
