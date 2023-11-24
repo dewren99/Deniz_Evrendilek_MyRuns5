@@ -97,7 +97,6 @@ object ExerciseRecognitionManager {
                     eventIndex = 0
                     continue
                 }
-                println("Classified process: $res")
                 onProcessed(res)
             }
         }
