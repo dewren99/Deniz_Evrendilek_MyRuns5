@@ -32,6 +32,9 @@ object ExerciseRecognitionManager {
         addToBuffer(magnitude)
     }
 
+    /**
+     * https://mathinsight.org/definition/magnitude_vector
+     */
     private fun getMagnitude(event: SensorEvent): Double {
         val v0 = event.values[0].toDouble()
         val v1 = event.values[1].toDouble()
@@ -61,19 +64,32 @@ object ExerciseRecognitionManager {
         return instance
     }
 
-    suspend fun process() {
+    /**
+     * Continuously reads sensor events and classifies them
+     * in 64 event chunks in the IO thread.
+     */
+    suspend fun process(onProcessed: (Double) -> Unit) {
         return withContext(Dispatchers.IO) {
             val events = DoubleArray(ACCELEROMETER_BLOCK_CAPACITY)
             var eventIndex = 0
+
             while (isActive) {
-                events[eventIndex++] = sensorEventBuffer.take()
+                events[eventIndex++] = try {
+                    sensorEventBuffer.take()
+                } catch (e: InterruptedException) {
+                    eventIndex = 0
+                    continue
+                }
                 if (events.size != ACCELEROMETER_BLOCK_CAPACITY) {
                     continue
                 }
                 eventIndex = 0
                 val instance = generateFeatureVector(events)
-                val res = WekaClassifier.classify(instance.toTypedArray())
-                println("Classified process: $res")
+                val res = try {
+                    WekaClassifier.classify(instance.toTypedArray())
+                } catch (e: Exception) {
+                    Double.NaN
+                }
                 if (res.isNaN()) {
                     // throw IllegalStateException("Classifier returned NaN.")
                     // Silently fail, and try to recover by resetting the loop
@@ -81,8 +97,9 @@ object ExerciseRecognitionManager {
                     eventIndex = 0
                     continue
                 }
+                println("Classified process: $res")
+                onProcessed(res)
             }
-            // TODO update exercise
         }
     }
 

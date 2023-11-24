@@ -14,6 +14,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import com.example.deniz_evrendilek_myruns5.R
 import com.example.deniz_evrendilek_myruns5.constants.ExerciseTypes
+import com.example.deniz_evrendilek_myruns5.constants.ExerciseTypes.EXERCISE_TYPE_UNKNOWN_ID
 import com.example.deniz_evrendilek_myruns5.constants.InputTypes
 import com.example.deniz_evrendilek_myruns5.data.model.TrackingExerciseEntry
 import com.example.deniz_evrendilek_myruns5.services.TrackingService
@@ -144,7 +145,7 @@ class MapFragment : Fragment(), MapFragmentInterface {
 
     private fun subscribeToTrackingService() {
         TrackingService.trackedExerciseEntry.observe(viewLifecycleOwner) {
-            onCoordinatesUpdated(it)
+            onExerciseDataUpdated(it)
         }
     }
 
@@ -153,7 +154,7 @@ class MapFragment : Fragment(), MapFragmentInterface {
         TrackingService.trackedExerciseEntry.removeObservers(viewLifecycleOwner)
     }
 
-    private fun onCoordinatesUpdated(trackingExerciseEntry: TrackingExerciseEntry) {
+    private fun onExerciseDataUpdated(trackingExerciseEntry: TrackingExerciseEntry) {
         this.trackingExerciseEntry = trackingExerciseEntry
         DrawLocation(trackingExerciseEntry.latLngList, googleMap).draw()
         setStatTexts()
@@ -217,7 +218,12 @@ class MapFragment : Fragment(), MapFragmentInterface {
         val climbTextView = view.findViewById<TextView>(R.id.map_exercise_climb)
         val distanceTextView = view.findViewById<TextView>(R.id.map_exercise_distance)
 
-        val type = exerciseType ?: "Unknown"
+
+        var type = exerciseType ?: "Unknown"
+        val exerciseTypeId = trackingExerciseEntry.activityType
+        if (type == "Unknown" && exerciseTypeId != EXERCISE_TYPE_UNKNOWN_ID) {
+            type = ExerciseTypes.getString(exerciseTypeId)
+        }
         val typeText = "Type: $type"
         exerciseTypeTextView.text = typeText
 

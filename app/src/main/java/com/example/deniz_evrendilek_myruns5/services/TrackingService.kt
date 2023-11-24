@@ -37,7 +37,8 @@ import kotlinx.coroutines.launch
 class TrackingService : Service() {
     private var isFirstRun = true
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scopeLocation = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scopeSensor = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var locationTrackingManager: LocationTrackingManager
     private var exerciseTypeId: Int = EXERCISE_TYPE_UNKNOWN_ID
     private var inputTypeId: Int = INPUT_TYPE_UNKNOWN_ID
@@ -61,8 +62,8 @@ class TrackingService : Service() {
             // start only if automatic
             return
         }
-        scope.launch {
-            ExerciseRecognitionManager.process()
+        scopeSensor.launch {
+            ExerciseRecognitionManager.process(::onExerciseClassified)
         }
         sensorListenerManager = SensorListenerManager(this, ::onSensorChanged)
         sensorListenerManager?.start()
@@ -73,6 +74,24 @@ class TrackingService : Service() {
             return
         }
         ExerciseRecognitionManager.addSensorEventToBuffer(event)
+    }
+
+    private fun onExerciseClassified(classification: Double) {
+        val update = classification.toInt()
+        var temp = exerciseTypeId
+        if (update == 0) {
+            temp = 2 // Standing
+        }
+        if (update == 1) {
+            temp = 1 // Walking
+        }
+        if (update == 2) {
+            temp = 0 // Running
+        }
+        if (temp != exerciseTypeId) {
+            exerciseTypeId = temp
+            updateExerciseType(exerciseTypeId)
+        }
     }
 
     private fun initLocationProvider() {
@@ -146,7 +165,7 @@ class TrackingService : Service() {
         locationTrackingManager.subscribe(LOCATION_POLL_INTERVAL).catch { it.printStackTrace() }
             .onEach {
                 onLocationUpdate(it)
-            }.launchIn(scope)
+            }.launchIn(scopeLocation)
     }
 
     private fun onLocationUpdate(location: Location) {
@@ -183,7 +202,8 @@ class TrackingService : Service() {
     override fun onDestroy() {
         sensorListenerManager?.stop()
         super.onDestroy()
-        scope.cancel()
+        scopeLocation.cancel()
+        scopeSensor.cancel()
     }
 
     companion object {
@@ -214,6 +234,17 @@ class TrackingService : Service() {
                 activityType = exerciseType,
                 dateTime = entry.dateTime,
                 locationList = locations.toList()
+            )
+            trackedExerciseEntry.postValue(update)
+        }
+
+        private fun updateExerciseType(exerciseId: Int) {
+            val entry = trackedExerciseEntry.value ?: return
+            val update = TrackingExerciseEntry(
+                inputType = entry.inputType,
+                activityType = exerciseId,
+                dateTime = entry.dateTime,
+                locationList = entry.locationList
             )
             trackedExerciseEntry.postValue(update)
         }
