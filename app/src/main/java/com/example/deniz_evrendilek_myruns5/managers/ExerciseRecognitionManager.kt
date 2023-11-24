@@ -72,6 +72,7 @@ object ExerciseRecognitionManager {
         return withContext(Dispatchers.IO) {
             val events = DoubleArray(ACCELEROMETER_BLOCK_CAPACITY)
             var eventIndex = 0
+            var lastUpdate = 0L
 
             while (isActive) {
                 events[eventIndex++] = try {
@@ -97,9 +98,20 @@ object ExerciseRecognitionManager {
                     eventIndex = 0
                     continue
                 }
+
+                // throttle for some time before going back to "standing"
+                val currentTime = System.currentTimeMillis()
+                val isTooSoon = (currentTime - lastUpdate) <= 2000
+                val throttle = isTooSoon && res == 0.0
+                if (throttle && ENABLE_THROTTLE) {
+                    continue
+                }
+
                 onProcessed(res)
+                lastUpdate = currentTime
             }
         }
     }
 
+    private const val ENABLE_THROTTLE = false
 }
