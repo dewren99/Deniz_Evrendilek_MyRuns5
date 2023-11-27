@@ -113,5 +113,5 @@ object ExerciseRecognitionManager {
         }
     }
 
-    private const val ENABLE_THROTTLE = false
+    private const val ENABLE_THROTTLE = true
 }
